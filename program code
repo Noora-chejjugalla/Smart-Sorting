@@ -12,7 +12,7 @@ datagen = ImageDataGenerator(
 
 train_gen = datagen.flow_from_directory(
     data_dir,w
-    target_size=(img_height, img_idth),
+    target_size=(img_height, img_width),
     batch_size=batch_size,
     class_mode='categorical',
     subset='training'
