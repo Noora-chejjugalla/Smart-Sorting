@@ -1,0 +1,358 @@
+%pip install bumpy
+%pip install pandas
+%pip install scikit-learn
+%pip install matplotlib
+%pip install scipy
+%pip install seaborn
+%pip install tensorflow
+%pip install Flask
+
+import os
+import shutil
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from sklearn.model_selection import train_test_split
+import shutil
+from sklearn.model_selection import train_test_split
+from tensorflow.keras.applications.vgg16 import VGG16
+from tensorflow.keras.layers import Dense, Flatten
+from tensorflow.keras.models import Model
+from keras.optimizers import Adam
+from tensorflow.keras.applications.resnet50 import ResNet50
+from tensorflow.keras.layers import Dense, Flatten
+from tensorflow.keras.models import Model
+from keras.preprocessing import image
+from keras.applications.vgg16 import preprocess_input
+from tensorflow.keras.preprocessing.image import load_img, img_to_array
+
+!mkdir ~/.kaggle
+
+!cp kaggle.json ~/.kaggle
+
+!kaggle datasets download -d muhammad0subhan/fruit-and-vegetable-disease-healthy-vs-rotten
+
+Warning: Your Kaggle API key is readable by other users on this system! To fix this, you can run 'chmod 600 /root/.kaggle/kaggle.json'
+Dataset URL: https://www.kaggle.com/datasets/muhammad0subhan/fruit-and-vegetable-disease-healthy-vs-rotten
+License(s): CC0-1.0
+Downloading fruit-and-vegetable-disease-healthy-vs-rotten.zip to /content
+100% 4.76G/4.77G [00:41<00:00, 136MB/s]
+100% 4.77G/4.77G [00:41<00:00, 124MB/s]
+
+!unzip /content/fruit-and-vegetable-disease-healthy-vs-rotten.zip
+
+import numpy as np
+from sklearn.model_selection import train_test_split
+import os
+import shutil
+
+# Set the path to the dataset
+dataset_dir = '/content/Fruit And Vegetable Diseases Dataset'
+classes = os.listdir(dataset_dir)
+
+# Create directories for train, val, and test sets
+output_dir = 'output_dataset'
+os.makedirs(output_dir, exist_ok=True)
+os.makedirs(os.path.join(output_dir, 'train'), exist_ok=True)
+os.makedirs(os.path.join(output_dir, 'val'), exist_ok=True)
+os.makedirs(os.path.join(output_dir, 'test'), exist_ok=True)
+
+for cls in classes:
+    os.makedirs(os.path.join(output_dir, 'train', cls), exist_ok=True)
+    os.makedirs(os.path.join(output_dir, 'val', cls), exist_ok=True)
+    os.makedirs(os.path.join(output_dir, 'test', cls), exist_ok=True)
+
+    class_dir = os.path.join(dataset_dir, cls)
+    images = os.listdir(class_dir)[:200]
+
+    print(cls, len(images))
+
+    train_and_val_images, test_images = train_test_split(images, test_size=0.2, random_state=42)
+    train_images, val_images = train_test_split(train_and_val_images, test_size=0.25, random_state=42)  # 0.25 x 0.8 = 0.2
+
+    # Copy images to respective directories
+    for img in train_images:
+        shutil.copy(os.path.join(class_dir, img), os.path.join(output_dir, 'train', cls, img))
+    for img in val_images:
+        shutil.copy(os.path.join(class_dir, img), os.path.join(output_dir, 'val', cls, img))
+    for img in test_images:
+        shutil.copy(os.path.join(class_dir, img), os.path.join(output_dir, 'test', cls, img))
+
+print("Dataset split into training, validation, and test sets.")
+
+# Define directories
+dataset_dir = '/content/output_dataset'
+train_dir = os.path.join(dataset_dir, 'train')
+val_dir = os.path.join(dataset_dir, 'val')
+test_dir = os.path.join(dataset_dir, 'test')
+
+# Define image size expected by the pre-trained model
+IMG_SIZE = (224, 224)  # Common size for many models like ResNet, VGG, MobileNet
+
+# Create ImageDataGenerators for resizing and augmenting the images
+train_datagen = ImageDataGenerator(
+    rescale=1./255,
+    rotation_range=20,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    shear_range=0.2,
+    zoom_range=0.2,
+    horizontal_flip=True,
+    fill_mode='nearest'
+)
+
+val_test_datagen = ImageDataGenerator(rescale=1./255)
+
+# Load and resize the images from directories
+train_generator = train_datagen.flow_from_directory(
+    train_dir,
+    target_size=IMG_SIZE,
+    batch_size=32,
+    class_mode='binary'  # Assuming binary classification for healthy vs rotten
+)
+
+val_generator = val_test_datagen.flow_from_directory(
+    val_dir,
+    target_size=IMG_SIZE,
+    batch_size=32,
+    class_mode='binary'
+)
+
+test_generator = val_test_datagen.flow_from_directory(
+    test_dir,
+    target_size=IMG_SIZE,
+    batch_size=32,
+    class_mode='binary',
+    shuffle=False  # Do not shuffle test data
+)
+
+# Print class indices for reference
+print(train_generator.class_indices)
+print(val_generator.class_indices)
+print(test_generator.class_indices)
+
+# Specify the path to your image folder
+folder_path = '/content/output_dataset/train/Apple__Healthy'  # Replace with the actual path to your image folder
+
+# List all files in the folder
+image_files = [f for f in os.listdir(folder_path) if f.endswith(('.jpg', '.png', '.jpeg'))]
+
+# Select a random image from the list
+selected_image = random.choice(image_files)
+
+# Display the randomly selected image
+image_path = os.path.join(folder_path, selected_image)
+display(Image(filename=image_path))
+
+# Specify the path to your image folder
+folder_path = '/content/output_dataset/test/Strawberry__Healthy'  # Replace with the actual path to your image folder
+
+# List all files in the folder
+image_files = [f for f in os.listdir(folder_path) if f.endswith(('.jpg', '.png', '.jpeg'))]
+
+# Select a random image from the list
+selected_image = random.choice(image_files)
+
+# Display the randomly selected image
+image_path = os.path.join(folder_path, selected_image)
+display(Image(filename=image_path))
+
+# Specify the path to your image folder
+folder_path = '/content/output_dataset/test/Cucumber__Rotten'  # Replace with the actual path to your image folder
+
+# List all files in the folder
+image_files = [f for f in os.listdir(folder_path) if f.endswith(('.jpg', '.png', '.jpeg'))]
+
+# Select a random image from the list
+selected_image = random.choice(image_files)
+
+# Display the randomly selected image
+image_path = os.path.join(folder_path, selected_image)
+display(Image(filename=image_path))
+
+# Specify the path to your image folder
+folder_path = '/content/output_dataset/test/Strawberry__Rotten'  # Replace with the actual path to your image folder
+
+# List all files in the folder
+image_files = [f for f in os.listdir(folder_path) if f.endswith(('.jpg', '.png', '.jpeg'))]
+
+# Select a random image from the list
+selected_image = random.choice(image_files)
+
+# Display the randomly selected image
+image_path = os.path.join(folder_path, selected_image)
+display(Image(filename=image_path))
+
+trainpath = "/content/output_dataset/train"
+testpath = "/content/output_dataset/test"
+
+train_datagen = ImageDataGenerator(rescale = 1./255, zoom_range= 0.2, shear_range= 0.2)
+test_datagen = ImageDataGenerator(rescale = 1./255)
+
+train = train_datagen.flow_from_directory(trainpath, target_size =(224,224), batch_size = 20)
+test = test_datagen.flow_from_directory(testpath, target_size =(224,224), batch_size = 20)  #5 ,15 , 32, 50
+
+from tensorflow.keras.applications.vgg16 import VGG16
+from tensorflow.keras.layers import Dense, Flatten
+from tensorflow.keras.models import Model
+
+vgg = VGG16(include_top = False, input_shape = (224,224,3))
+
+for layer in vgg.layers:
+    print(layer)
+
+len(vgg.layers)
+
+for layer in vgg.layers:
+    layer.trainable = False
+
+x = Flatten()(vgg.output)
+
+output = Dense(28, activation = 'softmax')(x)
+
+vgg16 = Model(vgg.input, output)
+
+vgg16.summary()
+
+from keras.callbacks import EarlyStopping
+from keras.optimizers import Adam
+opt = Adam(learning_rate=0.0001)  # Fixed learning rate parameter
+
+# Define Early Stopping callback
+early_stopping = EarlyStopping(monitor='val_accuracy', patience=3, restore_best_weights=True)
+
+# Compile the model with the optimizer instance
+vgg16.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
+
+# Train the model with early stopping callback
+history = vgg16.fit(train, validation_data=test,  # Fixed validation_data syntax
+    epochs=15,
+    steps_per_epoch=20,
+    callbacks=[early_stopping])
+
+labels=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27]
+
+# Testing class - 1
+img_path = '/content/output_dataset/train/Bellpepper__Healthy/freshPepper (104).jpg'
+
+import numpy as np
+img = load_img(img_path, target_size=(224, 224))
+x = img_to_array(img)
+x = preprocess_input(x)
+preds = vgg16.predict(np.array([x]))
+preds
+
+labels[np.argmax(preds)]
+
+# Testing class - 2
+img_path = '/content/output_dataset/train/Mango__Rotten/153.jpg'
+
+import numpy as np
+img = load_img(img_path, target_size=(224, 224))
+x = img_to_array(img)
+x = preprocess_input(x)
+preds = vgg16.predict(np.array([x]))
+preds
+
+labels[np.argmax(preds)]
+
+# Testing class-3
+
+img_path = '/content/output_dataset/train/Orange__Healthy/Screen Shot 2018-06-12 at 11.55.05 PM.png'
+
+import numpy as np
+img = load_img(img_path, target_size=(224, 224))
+x = img_to_array(img)
+x = preprocess_input(x)
+preds = vgg16.predict(np.array([x]))
+preds
+
+labels[np.argmax(preds)]
+
+# Testing class-4
+
+img_path = '/content/output_dataset/train/Cucumber__Healthy/freshCucumber (127).jpg'
+
+import numpy as np
+img = load_img(img_path, target_size=(224, 224))
+x = img_to_array(img)
+x = preprocess_input(x)
+preds = vgg16.predict(np.array([x]))
+preds
+
+labels[np.argmax(preds)]
+
+# Testing class-5
+
+img_path = '/content/output_dataset/train/Potato__Rotten/rottenPotato (103).jpg'
+
+import numpy as np
+img = load_img(img_path, target_size=(224, 224))
+x = img_to_array(img)
+x = preprocess_input(x)
+preds = vgg16.predict(np.array([x]))
+preds
+
+labels[np.argmax(preds)]
+
+from flask import Flask, render_template, request, jsonify, url_for, redirect
+from tensorflow.keras.preprocessing.image import load_img, img_to_array
+from PIL import Image
+import numpy as np
+import os
+import tensorflow as tf
+
+app = Flask(_name_)
+model = tf.keras.models.load_model('healthy_vs_rotten.h5')
+
+@app.route('/')
+def index():
+    return render_template("index.html")
+
+@app.route('/predict', methods=['GET', 'POST'])
+def output():
+    if request.method == 'POST':
+        f = request.files['pc_image']
+        img_path = "static/uploads/" + f.filename
+        f.save(img_path)
+        img = load_img(img_path, target_size=(224, 224))
+        # Resize the image to the required size
+        # Convert the image to an array and normalize it
+        image_array = np.array(img)
+        # Add a batch dimension
+        image_array = np.expand_dims(image_array, axis=0)
+        # Use the pre-trained model to make a prediction
+        pred = np.argmax(model.predict(image_array), axis=1)
+        index = ['Apple_Healthy (0)', 'AppleRotten (1)', 'Banana_Healthy (2)', 
+                 'Banana_Rotten (3)', 'BellpepperHealthy (4)', 'Bellpepper_Rotten (5)', 
+                 'Carrot_Healthy (6)', 'CarrotRotten (7)', 'CucumberHealthy (8)', 'Cucumber_Rotten (9)',
+                 'Grape_Healthy (10)', 'GrapeRotten (11)', 'GuavaHealthy (12)', 'Guava_Rotten (13)',
+                 'Jujube_Healthy (14)', 'JujubeRotten (15)', 'MangoHealthy (16)', 'Mango_Rotten (17)', 
+                 'Orange_Healthy (18)', 'OrangeRotten (19)', 'PomegranateHealthy (20)', 'Pomegranate_Rotten (21)', 
+                 'Potato_Healthy (22)', 'PotatoRotten (23)', 'StrawberryHealthy (24)', 'Strawberry_Rotten (25)', 
+                 'Tomato_Healthy (26)', 'Tomato_Rotten (27)']
+        
+        prediction = index[int(pred)]
+        print("prediction")
+        #predict = prediction
+        return render_template("portfolio-details.html", predict=prediction)
+
+if _name_ == '_main_':
+    app.run(debug=True, port=2222)
+
+In [1]: runfile('C:/Users/santu/Downloads/flask2/app.py', wdir='C:/Users/santu/Downloads/flask2')
+
+WARNING:absl:Compiled the loaded model, but the compiled metrics have 
+yet to be built. model.compile_metrics will be empty until you train 
+or evaluate the model.
+
+WARNING:absl:Error in loading the saved optimizer state. As a result, 
+your model is starting with a freshly initialized optimizer.
+
+ * Serving Flask app 'app'
+ * Debug mode: on
+
+INFO:werkzeug:WARNING: This is a development server. Do not use it in 
+production deployment. Use a production WSGI server instead.
+ * Running on http://127.0.0.1:2222
+INFO:werkzeug:Press CTRL+C to quit
+INFO:werkzeug: * Restarting with watchdog (windowsapi)
+
